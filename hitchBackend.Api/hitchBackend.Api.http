@@ -1,0 +1,6 @@
+@hitchBackend.Api_HostAddress = http://localhost:5264
+
+GET {{hitchBackend.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
