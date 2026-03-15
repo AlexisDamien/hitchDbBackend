@@ -92,6 +92,11 @@ builder.Services.AddSwaggerGen(opt =>
 builder.Services.AddHttpClient<ITmdbService, TmdbService>();
 var app = builder.Build();
 
+using ( IServiceScope scope = app.Services.CreateScope() )
+{
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors("FlutterPolicy");

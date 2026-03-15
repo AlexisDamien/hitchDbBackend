@@ -1,0 +1,33 @@
+services:
+  hitchdb_db:
+    container_name: hitchdb_db
+    image: postgres:12
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=hitchdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hitchdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "5432:5432"
+
+  backend:
+    container_name: backend
+    depends_on:
+      hitchdb_db:
+        condition: service_healthy
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment:
+      ConnectionStrings__Default: "Host=hitchdb_db;Port=5432;Database=hitchdb;Username=postgres;Password=postgres"
+    ports:
+      - "5264:5264"
+
+volumes:
+  pgdata: {}
