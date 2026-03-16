@@ -66,11 +66,17 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpDelete("delete-account")]
-    public async Task<IActionResult> DeleteAccount()
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Password))
+            return BadRequest("Password is required.");
+
         int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var user = await _db.Users.FindAsync(userId);
         if (user is null) return NotFound();
+
+        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            return Unauthorized("Invalid password.");
 
         _db.Users.Remove(user);
         await _db.SaveChangesAsync();
