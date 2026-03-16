@@ -3,9 +3,7 @@ using System.Text.Json.Serialization;
 
 public class MovieListItem
 {
-    public int Id { get; set; }
     public int MovieListId { get; set; }
-
     [JsonIgnore]
     public MovieList MovieList { get; set; } = null!;
 

@@ -95,6 +95,7 @@ public class MovieListsController : ControllerBase
     [HttpPost("{id}/movies")]
     public async Task<ActionResult<MovieListItem>> AddMovie(int id, [FromBody] AddFavoriteMovieDto dto)
     {
+        Console.WriteLine($"Adding movie {dto.MovieId} to list {id}");
         MovieList? list = await _db.MovieLists
             .FirstOrDefaultAsync(l => l.Id == id && l.UserId == GetUserId());
         if (list is null) return NotFound();
@@ -104,29 +105,32 @@ public class MovieListsController : ControllerBase
         object? movie = await _movies.GetMovieAsync(movieId);
         if (movie is null) return NotFound();
 
-        var exists = await _db.MovieListItems
-            .AnyAsync(i => i.MovieListId == id && i.MovieId == movieId);
-        if (exists) return Conflict("Film déjà dans la liste");
+        MovieListItem? item = _db.MovieListItems
+            .Find(id, movieId);
+        if (item != null) return Conflict("Film déjà dans la liste");
 
-        var item = new MovieListItem
+        item = new MovieListItem
         {
             MovieListId = id,
             MovieId = movieId,
             Movie = movie,
         };
         _db.MovieListItems.Add(item);
+
         await _db.SaveChangesAsync();
         return Ok(item);
     }
 
-    [HttpDelete("{id}/movies/{itemId}")]
-    public async Task<IActionResult> RemoveMovie(int id, int itemId)
+    [HttpDelete("{id}/movies/{movieId}")]
+    public async Task<IActionResult> RemoveMovie(int id, int movieId)
     {
-        var item = await _db.MovieListItems
-            .FirstOrDefaultAsync(i => i.Id == itemId && i.MovieListId == id);
+        Console.WriteLine($"(----------------------------) Removing movie {movieId} from list {id}");
+        MovieListItem? item = _db.MovieListItems
+            .Find(id, movieId);
         if (item is null) return NotFound();
 
         _db.MovieListItems.Remove(item);
+
         await _db.SaveChangesAsync();
         return NoContent();
     }

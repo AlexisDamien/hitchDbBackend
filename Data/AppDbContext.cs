@@ -15,5 +15,8 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<UserMovieRelation>()
             .HasKey(r => new { r.UserId, r.MovieId });
+
+        modelBuilder.Entity<MovieListItem>()
+            .HasKey(r => new { r.MovieListId, r.MovieId });
     }
 }
