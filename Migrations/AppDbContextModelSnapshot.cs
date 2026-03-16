@@ -21,39 +21,6 @@ namespace hitchBackend.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("FavoriteMovie", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ImdbId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PosterUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("FavoriteMovies");
-                });
-
             modelBuilder.Entity("MovieList", b =>
                 {
                     b.Property<int>("Id")
@@ -94,20 +61,11 @@ namespace hitchBackend.Api.Migrations
                     b.Property<DateTime>("AddedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ImdbId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("MovieId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("MovieListId")
                         .HasColumnType("integer");
-
-                    b.Property<string>("PosterUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -144,54 +102,29 @@ namespace hitchBackend.Api.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("WatchedMovie", b =>
+            modelBuilder.Entity("UserMovieRelation", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("UserId")
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<int>("MovieId")
+                        .HasColumnType("integer");
 
-                    b.Property<string>("ImdbId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("Liked")
+                    b.Property<bool>("Favorite")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("PosterUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<DateTime?>("MarkedForWatchLaterAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("Rating")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("WatchedAt")
+                    b.Property<DateTime?>("WatchedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("Id");
+                    b.HasKey("UserId", "MovieId");
 
-                    b.HasIndex("UserId");
-
-                    b.ToTable("WatchedMovies");
-                });
-
-            modelBuilder.Entity("FavoriteMovie", b =>
-                {
-                    b.HasOne("User", "User")
-                        .WithMany("FavoriteMovies")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
+                    b.ToTable("UserMovieRelations");
                 });
 
             modelBuilder.Entity("MovieList", b =>
@@ -216,15 +149,13 @@ namespace hitchBackend.Api.Migrations
                     b.Navigation("MovieList");
                 });
 
-            modelBuilder.Entity("WatchedMovie", b =>
+            modelBuilder.Entity("UserMovieRelation", b =>
                 {
-                    b.HasOne("User", "User")
-                        .WithMany("WatchedMovies")
+                    b.HasOne("User", null)
+                        .WithMany("MovieRelations")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MovieList", b =>
@@ -234,11 +165,9 @@ namespace hitchBackend.Api.Migrations
 
             modelBuilder.Entity("User", b =>
                 {
-                    b.Navigation("FavoriteMovies");
-
                     b.Navigation("MovieLists");
 
-                    b.Navigation("WatchedMovies");
+                    b.Navigation("MovieRelations");
                 });
 #pragma warning restore 612, 618
         }

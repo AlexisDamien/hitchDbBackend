@@ -1,4 +1,4 @@
-public class AddFavoriteMovieDto
+public class AddWatchForLaterMovieDto
 {
     public int MovieId { get; set; }
 }

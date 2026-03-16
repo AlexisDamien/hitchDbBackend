@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,5 +41,19 @@ public class AuthController : ControllerBase
             return Unauthorized("Identifiants invalides");
 
         return Ok(new { token = _authService.GenerateToken(user) });
+    }
+
+
+    [Authorize]
+    [HttpDelete("delete-account")]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await _db.Users.FindAsync(userId);
+        if (user is null) return NotFound();
+
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync();
+        return Ok("Compte supprimé");
     }
 }

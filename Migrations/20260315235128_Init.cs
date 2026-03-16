@@ -7,39 +7,25 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace hitchBackend.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class AddMovieModels : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Pseudo",
-                table: "Users",
-                type: "text",
-                nullable: false,
-                defaultValue: "");
-
             migrationBuilder.CreateTable(
-                name: "FavoriteMovies",
+                name: "Users",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    ImdbId = table.Column<string>(type: "text", nullable: false),
-                    Title = table.Column<string>(type: "text", nullable: false),
-                    PosterUrl = table.Column<string>(type: "text", nullable: false),
-                    AddedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: false),
+                    Pseudo = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_FavoriteMovies", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_FavoriteMovies_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                    table.PrimaryKey("PK_Users", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -65,24 +51,21 @@ namespace hitchBackend.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "WatchedMovies",
+                name: "UserMovieRelations",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
-                    ImdbId = table.Column<string>(type: "text", nullable: false),
-                    Title = table.Column<string>(type: "text", nullable: false),
-                    PosterUrl = table.Column<string>(type: "text", nullable: false),
-                    Liked = table.Column<bool>(type: "boolean", nullable: false),
+                    MovieId = table.Column<int>(type: "integer", nullable: false),
+                    WatchedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Favorite = table.Column<bool>(type: "boolean", nullable: false),
                     Rating = table.Column<int>(type: "integer", nullable: true),
-                    WatchedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    MarkedForWatchLaterAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WatchedMovies", x => x.Id);
+                    table.PrimaryKey("PK_UserMovieRelations", x => new { x.UserId, x.MovieId });
                     table.ForeignKey(
-                        name: "FK_WatchedMovies_Users_UserId",
+                        name: "FK_UserMovieRelations_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -96,9 +79,7 @@ namespace hitchBackend.Api.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     MovieListId = table.Column<int>(type: "integer", nullable: false),
-                    ImdbId = table.Column<string>(type: "text", nullable: false),
-                    Title = table.Column<string>(type: "text", nullable: false),
-                    PosterUrl = table.Column<string>(type: "text", nullable: false),
+                    MovieId = table.Column<int>(type: "integer", nullable: false),
                     AddedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -113,11 +94,6 @@ namespace hitchBackend.Api.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_FavoriteMovies_UserId",
-                table: "FavoriteMovies",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_MovieListItems_MovieListId",
                 table: "MovieListItems",
                 column: "MovieListId");
@@ -126,31 +102,22 @@ namespace hitchBackend.Api.Migrations
                 name: "IX_MovieLists_UserId",
                 table: "MovieLists",
                 column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_WatchedMovies_UserId",
-                table: "WatchedMovies",
-                column: "UserId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "FavoriteMovies");
-
-            migrationBuilder.DropTable(
                 name: "MovieListItems");
 
             migrationBuilder.DropTable(
-                name: "WatchedMovies");
+                name: "UserMovieRelations");
 
             migrationBuilder.DropTable(
                 name: "MovieLists");
 
-            migrationBuilder.DropColumn(
-                name: "Pseudo",
-                table: "Users");
+            migrationBuilder.DropTable(
+                name: "Users");
         }
     }
 }

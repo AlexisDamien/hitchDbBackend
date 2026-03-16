@@ -6,12 +6,13 @@ using System.Security.Claims;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class FavoriteMoviesController : ControllerBase
+public class WatchLaterMoviesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ITmdbService _movies;
 
-    public FavoriteMoviesController(AppDbContext db, ITmdbService movies) {
+    public WatchLaterMoviesController(AppDbContext db, ITmdbService movies)
+    {
         _db = db;
         _movies = movies;
     }
@@ -20,38 +21,42 @@ public class FavoriteMoviesController : ControllerBase
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<object>>> GetAll()
+    public async Task<ActionResult<IEnumerable<UserMovieRelation>>> GetAll()
     {
-        var favorites = await _db.UserMovieRelations
-            .Where(f =>
-                f.UserId == GetUserId() &&
-                f.Favorite
+        var movies = await _db.UserMovieRelations
+            .Where(w =>
+                w.UserId == GetUserId() &&
+                w.MarkedForWatchLaterAt != null
             )
-            .OrderByDescending(f => f.WatchedAt)
+            .OrderByDescending(w => w.MarkedForWatchLaterAt)
             .ToListAsync();
         await Parallel.ForEachAsync(
-            favorites,
-            async (favorite, _) => favorite.Movie = await _movies.GetMovieAsync(favorite.MovieId)
+            movies,
+            async (movie, _) => {
+                movie.Movie = await _movies.GetMovieAsync(movie.MovieId);
+            }
         );
-        return Ok(favorites);
+        return Ok(movies);
     }
 
     [HttpPost]
-    public async Task<ActionResult<object>> Add([FromBody] AddFavoriteMovieDto dto)
+    public async Task<ActionResult<UserMovieRelation>> Add([FromBody] AddWatchForLaterMovieDto dto)
     {
         int userId = GetUserId();
         int movieId = dto.MovieId;
+
         object? movie = await _movies.GetMovieAsync(movieId);
         if (movie is null) return NotFound("Film non trouvé");
 
         UserMovieRelation? relation = _db.UserMovieRelations
             .Find(userId, movieId);
 
-        if (relation is not null) {
-            if (relation.Favorite) return BadRequest("Film déjà dans les favoris");
+        if (relation is not null)
+        {
+            if (relation.MarkedForWatchLaterAt != null) return Conflict("Film déjà dans la watch later list");
 
-            relation.Favorite = true;
-            relation.WatchedAt ??= DateTime.UtcNow;
+            relation.MarkedForWatchLaterAt = DateTime.UtcNow;
+            relation.Movie = movie;
 
             await _db.SaveChangesAsync();
             return Ok(relation);
@@ -62,7 +67,7 @@ public class FavoriteMoviesController : ControllerBase
             UserId = userId,
             MovieId = movieId,
             Movie = movie,
-            Favorite = true
+            MarkedForWatchLaterAt = DateTime.UtcNow,
         };
         _db.UserMovieRelations.Add(relation);
 
@@ -71,14 +76,14 @@ public class FavoriteMoviesController : ControllerBase
     }
 
     [HttpDelete("{movieId}")]
-    public async Task<ActionResult<object>> Delete(int movieId)
+    public async Task<ActionResult<UserMovieRelation>> Delete(int movieId)
     {
-        var relation = _db.UserMovieRelations
+        var movie = _db.UserMovieRelations
             .Find(GetUserId(), movieId);
-        if (relation is null) return NotFound();
-        if (!relation.Favorite) return Conflict("Film n'est pas dans les favoris");
+        if (movie is null) return NotFound();
+        if (movie.MarkedForWatchLaterAt == null) return Conflict("Film n'est pas dans la watch later list");
 
-        relation.Favorite = false;
+        movie.MarkedForWatchLaterAt = null;
 
         await _db.SaveChangesAsync();
         return NoContent();

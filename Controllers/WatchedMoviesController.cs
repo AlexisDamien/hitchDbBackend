@@ -9,67 +9,96 @@ using System.Security.Claims;
 public class WatchedMoviesController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ITmdbService _movies;
 
-    public WatchedMoviesController(AppDbContext db) => _db = db;
+    public WatchedMoviesController(AppDbContext db, ITmdbService movies)
+    {
+        _db = db;
+        _movies = movies;
+    }
 
     private int GetUserId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<ActionResult<IEnumerable<UserMovieRelation>>> GetAll()
     {
-        var movies = await _db.WatchedMovies
-            .Where(w => w.UserId == GetUserId())
+        var movies = await _db.UserMovieRelations
+            .Where(w =>
+                w.UserId == GetUserId() &&
+                w.WatchedAt != null
+            )
+            .OrderByDescending(w => w.WatchedAt)
             .ToListAsync();
+        await Parallel.ForEachAsync(
+            movies,
+            async (watchedMovie, _) => watchedMovie.Movie = await _movies.GetMovieAsync(watchedMovie.MovieId)
+        );
         return Ok(movies);
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
-    {
-        var movie = await _db.WatchedMovies
-            .FirstOrDefaultAsync(w => w.Id == id && w.UserId == GetUserId());
-        return movie is null ? NotFound() : Ok(movie);
-    }
-
     [HttpPost]
-    public async Task<IActionResult> Add([FromBody] AddWatchedMovieDto dto)
+    public async Task<ActionResult<UserMovieRelation>> Add([FromBody] AddWatchedMovieDto dto)
     {
-        var watched = new WatchedMovie
+        int movieId = dto.MovieId;
+
+        object? movie = await _movies.GetMovieAsync(movieId);
+        if (movie is null) return NotFound("Film non trouvé");
+
+        int userId = GetUserId();
+        var relation = _db.UserMovieRelations
+            .Find(userId, movieId);
+
+        if (relation is not null)
         {
-            UserId = GetUserId(),
-            ImdbId = dto.ImdbId,
-            Title = dto.Title,
-            PosterUrl = dto.PosterUrl,
-            Liked = dto.Liked,
+            if (relation.WatchedAt != null) return Conflict("Film déjà dans la liste des films regardés");
+
+            relation.WatchedAt = DateTime.UtcNow;
+            relation.Rating = dto.Rating ?? relation.Rating;
+
+            await _db.SaveChangesAsync();
+            return Ok(relation);
+        }
+
+        relation = new UserMovieRelation
+        {
+            UserId = userId,
+            MovieId = movieId,
+            Movie = movie,
+            WatchedAt = DateTime.UtcNow,
             Rating = dto.Rating
         };
-        _db.WatchedMovies.Add(watched);
+        _db.UserMovieRelations.Add(relation);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = watched.Id }, watched);
+        return Ok(relation);
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] AddWatchedMovieDto dto)
+    [HttpPut("{movieId}")]
+    public async Task<ActionResult<UserMovieRelation>> Update(int movieId, [FromBody] UpdateWatchedMovieDto dto)
     {
-        var movie = await _db.WatchedMovies
-            .FirstOrDefaultAsync(w => w.Id == id && w.UserId == GetUserId());
-        if (movie is null) return NotFound();
+        var relation = _db.UserMovieRelations
+            .Find(GetUserId(), movieId);
+        if (relation is null) return NotFound();
 
-        movie.Liked = dto.Liked;
-        movie.Rating = dto.Rating;
+        relation.WatchedAt ??= DateTime.UtcNow;
+        relation.Rating = dto.Rating ?? relation.Rating;
+
         await _db.SaveChangesAsync();
-        return Ok(movie);
+        return Ok(relation);
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{movieId}")]
+    public async Task<ActionResult<UserMovieRelation>> Delete(int movieId)
     {
-        var movie = await _db.WatchedMovies
-            .FirstOrDefaultAsync(w => w.Id == id && w.UserId == GetUserId());
-        if (movie is null) return NotFound();
+        var relation = _db.UserMovieRelations
+            .Find(GetUserId(), movieId);
+        if (relation is null) return NotFound();
+        if (relation.WatchedAt == null) return Conflict("Film n'est pas dans la liste des films regardés");
 
-        _db.WatchedMovies.Remove(movie);
+        relation.WatchedAt = null;
+        relation.Rating = null;
+        relation.Favorite = false;
+
         await _db.SaveChangesAsync();
         return NoContent();
     }

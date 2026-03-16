@@ -89,7 +89,18 @@ builder.Services.AddSwaggerGen(opt =>
         }
     });
 });
-builder.Services.AddHttpClient<ITmdbService, TmdbService>();
+builder.Services.AddHttpClient<ITmdbService, TmdbService>((serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["Tmdb:BaseUrl"];
+
+    if (string.IsNullOrWhiteSpace(baseUrl))
+    {
+        throw new InvalidOperationException("Missing configuration key 'Tmdb:BaseUrl'.");
+    }
+
+    client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+});
 var app = builder.Build();
 
 using ( IServiceScope scope = app.Services.CreateScope() )

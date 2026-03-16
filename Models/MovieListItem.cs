@@ -1,11 +1,16 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
 public class MovieListItem
 {
     public int Id { get; set; }
     public int MovieListId { get; set; }
+
+    [JsonIgnore]
     public MovieList MovieList { get; set; } = null!;
 
-    public string ImdbId { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string PosterUrl { get; set; } = string.Empty;
+    public int MovieId { get; set; }
+    [NotMapped]
+    public object? Movie { get; set; } = null;
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 }

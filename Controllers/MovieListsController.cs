@@ -9,8 +9,13 @@ using System.Security.Claims;
 public class MovieListsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ITmdbService _movies;
 
-    public MovieListsController(AppDbContext db) => _db = db;
+    public MovieListsController(AppDbContext db, ITmdbService movies)
+    {
+        _db = db;
+        _movies = movies;
+    }
 
     private int GetUserId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -22,20 +27,32 @@ public class MovieListsController : ControllerBase
             .Where(l => l.UserId == GetUserId())
             .Include(l => l.Items)
             .ToListAsync();
+        await Parallel.ForEachAsync(
+            lists,
+            async (list, _) => {
+                await Parallel.ForEachAsync(
+                    list.Items,
+                    async (item, _) => {
+                        item.Movie = await _movies.GetMovieAsync(item.MovieId);
+                    }
+                );
+            }
+        );
         return Ok(lists);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<ActionResult<MovieList>> GetById(int id)
     {
         var list = await _db.MovieLists
+            .Include(i => i.User)
             .Include(l => l.Items)
             .FirstOrDefaultAsync(l => l.Id == id && l.UserId == GetUserId());
         return list is null ? NotFound() : Ok(list);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateMovieListDto dto)
+    public async Task<ActionResult<MovieList>> Create([FromBody] CreateMovieListDto dto)
     {
         var list = new MovieList
         {
@@ -49,7 +66,7 @@ public class MovieListsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] CreateMovieListDto dto)
+    public async Task<ActionResult<MovieList>> Update(int id, [FromBody] CreateMovieListDto dto)
     {
         var list = await _db.MovieLists
             .FirstOrDefaultAsync(l => l.Id == id && l.UserId == GetUserId());
@@ -62,7 +79,7 @@ public class MovieListsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<ActionResult<MovieList>> Delete(int id)
     {
         var list = await _db.MovieLists
             .FirstOrDefaultAsync(l => l.Id == id && l.UserId == GetUserId());
@@ -76,18 +93,26 @@ public class MovieListsController : ControllerBase
     // --- Gestion des films dans une liste ---
 
     [HttpPost("{id}/movies")]
-    public async Task<IActionResult> AddMovie(int id, [FromBody] AddFavoriteMovieDto dto)
+    public async Task<ActionResult<MovieListItem>> AddMovie(int id, [FromBody] AddFavoriteMovieDto dto)
     {
-        var list = await _db.MovieLists
+        MovieList? list = await _db.MovieLists
             .FirstOrDefaultAsync(l => l.Id == id && l.UserId == GetUserId());
         if (list is null) return NotFound();
+
+        int movieId = dto.MovieId;
+
+        object? movie = await _movies.GetMovieAsync(movieId);
+        if (movie is null) return NotFound();
+
+        var exists = await _db.MovieListItems
+            .AnyAsync(i => i.MovieListId == id && i.MovieId == movieId);
+        if (exists) return Conflict("Film déjà dans la liste");
 
         var item = new MovieListItem
         {
             MovieListId = id,
-            ImdbId = dto.ImdbId,
-            Title = dto.Title,
-            PosterUrl = dto.PosterUrl
+            MovieId = movieId,
+            Movie = movie,
         };
         _db.MovieListItems.Add(item);
         await _db.SaveChangesAsync();

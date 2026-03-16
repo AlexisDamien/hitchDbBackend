@@ -4,18 +4,16 @@ public class TmdbService : ITmdbService
 {
     private readonly HttpClient _http;
     private readonly string _apiKey;
-    private readonly string _baseUrl;
 
     public TmdbService(HttpClient http, IConfiguration config)
     {
         _http = http;
-        _apiKey = config["Tmdb:ApiKey"]!;
-        _baseUrl = config["Tmdb:BaseUrl"]!;
+        _apiKey = config["Tmdb:ApiKey"] ?? throw new InvalidOperationException("Missing configuration key 'Tmdb:ApiKey'.");
     }
 
     public async Task<object?> SearchMoviesAsync(string query, int page = 1)
     {
-        var url = $"{_baseUrl}/search/movie?api_key={_apiKey}&query={Uri.EscapeDataString(query)}&page={page}&language=fr-FR";
+        var url = $"search/movie?api_key={_apiKey}&query={Uri.EscapeDataString(query)}&page={page}&language=fr-FR";
         var response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode) return null;
         var json = await response.Content.ReadAsStringAsync();
@@ -24,7 +22,7 @@ public class TmdbService : ITmdbService
 
     public async Task<object?> GetMovieAsync(int tmdbId)
     {
-        var url = $"{_baseUrl}/movie/{tmdbId}?api_key={_apiKey}&language=fr-FR";
+        var url = $"movie/{tmdbId}?api_key={_apiKey}&language=fr-FR";
         var response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode) return null;
         var json = await response.Content.ReadAsStringAsync();
@@ -33,7 +31,7 @@ public class TmdbService : ITmdbService
 
     public async Task<object?> GetPopularMoviesAsync(int page = 1)
     {
-        var url = $"{_baseUrl}/movie/popular?api_key={_apiKey}&page={page}&language=fr-FR";
+        var url = $"movie/popular?api_key={_apiKey}&page={page}&language=fr-FR";
         var response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode) return null;
         var json = await response.Content.ReadAsStringAsync();
@@ -42,7 +40,7 @@ public class TmdbService : ITmdbService
 
     public async Task<object?> GetTopRatedMoviesAsync(int page = 1)
     {
-        var url = $"{_baseUrl}/movie/top_rated?api_key={_apiKey}&page={page}&language=fr-FR";
+        var url = $"movie/top_rated?api_key={_apiKey}&page={page}&language=fr-FR";
         var response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode) return null;
         var json = await response.Content.ReadAsStringAsync();

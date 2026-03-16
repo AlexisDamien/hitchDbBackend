@@ -18,10 +18,10 @@ public class MoviesController : ControllerBase
         return result is null ? StatusCode(503, "TMDB indisponible") : Ok(result);
     }
 
-    [HttpGet("{tmdbId}")]
-    public async Task<IActionResult> GetMovie(int tmdbId)
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetMovie(int id)
     {
-        var result = await _tmdb.GetMovieAsync(tmdbId);
+        var result = await _tmdb.GetMovieAsync(id);
         return result is null ? NotFound() : Ok(result);
     }
 
