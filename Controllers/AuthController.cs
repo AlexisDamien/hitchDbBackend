@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,11 +17,30 @@ public class AuthController : ControllerBase
         _db = db;
     }
 
+    public static bool ValidatePassword(string password, [NotNullWhen(false)] out string? error)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            error = "Password is required.";
+            return false;
+        }
+        if (password.Length < 6)
+        {
+            error = "Password must be at least 6 characters long.";
+            return false;
+        }
+        error = null;
+        return true;
+    }
+
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] CreateUserDto dto)
     {
         var exists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
         if (exists) return Conflict("Email déjà utilisé");
+
+        if (!ValidatePassword(dto.Password, out string? passwordError))
+            return BadRequest(passwordError);
 
         var user = new User
         {
